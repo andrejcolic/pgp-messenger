@@ -1,7 +1,6 @@
 """
-Modul: dialogs.py
-Opis:  Zajednicki GUI dijalozi - unos lozinke, prikaz gresaka i prikaz rezultata prijema poruke.
-       Koriste ih i tab_send.py i tab_receive.py.
+Module: dialogs.py
+Description: This module provides GUI dialogs for password input and message display.
 """
 
 import tkinter as tk
@@ -11,7 +10,7 @@ from message.keyring import PrivateKeyEntry
 
 
 class PasswordCancelled(Exception):
-    """Diže se kada korisnik otkaže unos lozinke u dijalogu."""
+    """When user presses CancelButton in Dialog."""
 
 
 def ask_password(parent: tk.Widget, entry: PrivateKeyEntry) -> str:

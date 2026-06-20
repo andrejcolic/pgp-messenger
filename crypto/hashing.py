@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import hashes
 
 def hash_function(data: bytes | str) -> bytes:
     """
+    Hashes the input data using SHA-1 algorithm.
     :param data: block_size 8 bytes
     :return:
     """
@@ -18,7 +19,7 @@ def hash_function(data: bytes | str) -> bytes:
     return digest.finalize()
 
 
-def test():
+if __name__ == "__main__":
     data = b"""
             Hello world! Testing hash algorithm SHA-1.
             Module: hashing.py
@@ -29,7 +30,3 @@ def test():
     hashed_data = hash_function(data)
     print(f"DATA: {data.decode(errors='ignore')}")
     print(f"HASHED DATA: {hashed_data.hex()}")
-
-
-if __name__ == "__main__":
-    test()

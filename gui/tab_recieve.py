@@ -214,7 +214,7 @@ class TabReceive(ttk.Frame):
     def _format_success_status(result: ReceivedResult) -> str:
         parts = [f"Uspešno primljeno: {result.filename}"]
         if result.signature_present:
-            if result.signature_valid is True:
+            if result.signature_valid:
                 parts.append(f"Potpis validan ({result.sender_user_id})")
             elif result.signature_valid is False:
                 parts.append("Potpis NIJE validan")

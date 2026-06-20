@@ -13,7 +13,7 @@ from config import SymmetricAlgorithm
 from crypto import rsa
 from crypto.hashing import hash_function
 from message.keyring import PublicKeyRing, PrivateKeyRing, PrivateKeyEntry
-from crypto.radix64 import convert_from_radix64
+from crypto.radix64 import convert_from_radix64, is_valid_radix64
 from crypto.symmetric_algorithms import decrypt
 from message.pgp_message import PGPMessage, SignatureComponent, MessageComponent
 from crypto.compression import decompress
@@ -24,14 +24,15 @@ class ReceivedResult:
     """
     Data class to store the received message, to be shown in GUI.
     """
-    filename: str
-    data: bytes                         # original message
-    success: bool
-    error_msg: str | None = None
-    signature_present: bool = False
-    signature_valid: bool | None = None # None -> cannot be verified (missing key)
-    sender_user_id: str | None = None
-    timestamp: int | None = None
+    filename: str                       # Original filename
+    data: bytes                         # Original message
+    success: bool                       # True -> message received successfully | False -> error occurred
+    error_msg: str | None = None        # Error message when success is False
+    signature_present: bool = False     # True -> is present | False -> is not present
+    signature_valid: bool | None = None # True -> is valid | False -> is not valid |
+                                        # None -> cannot be verified (missing key) or signature is not present
+    sender_user_id: str | None = None   # Sender user ID if signature is present and valid, otherwise None
+    timestamp: int | None = None        # Timestamp of the message if signature is present and valid, otherwise None
 
 
 def receive_message(
@@ -42,9 +43,24 @@ def receive_message(
     private_ring: PrivateKeyRing,
     get_password: Callable[[...], str],
 ) -> ReceivedResult:
+    """
+    Provides PGP message receiving flow.
+    1. Convert from Radix64 if needed
+    2. Decrypt the message if needed
+    3. Decompress the message if needed
+    4. Verify the signature if present
+    :param file_bytes:
+    :param is_radix64:
+    :param public_ring:
+    :param private_ring:
+    :param get_password:
+    :return:
+    """
 
 
     try:
+        _check_radix_format(is_radix64, file_bytes)
+
         raw = convert_from_radix64(file_bytes) if is_radix64 else file_bytes
 
         msgPGP = PGPMessage.from_bytes(raw)
@@ -86,6 +102,13 @@ def receive_message(
             timestamp=None,
         )
 
+def _check_radix_format(is_radix64: bool, data: bytes):
+    if not is_radix64 and is_valid_radix64(data):
+        raise ValueError("Datoteka je u Radix64 formatu.\n"
+                         "Izaberite opciju \'Radix-64\'")
+    elif is_radix64 and not is_valid_radix64(data):
+        raise ValueError("Datoteka nije u Radix64 formatu.\n"
+                         "Isključite opciju \'Radix-64\'")
 
 
 def _decrypt_payload(
@@ -93,6 +116,18 @@ def _decrypt_payload(
         private_key_ring: PrivateKeyRing,
         get_password: Callable[[...], str],
 ) -> bytes:
+    """
+    Decrypts the payload of the PGP message if confidentiality is enabled.
+    1. Get the private key entry from the private key ring using the recipient's key ID.
+    2. Unlock the private key using the provided password.
+    3. Decrypt the session key using RSA decryption with the unlocked private key.
+    4. Decrypt the payload using the symmetric algorithm specified in the message, the decrypted session key, and the initialization vector (IV) from the message.
+    5. Return the decrypted payload.
+    :param message:
+    :param private_key_ring:
+    :param get_password:
+    :return:
+    """
 
     payload = message.payload
 
@@ -101,22 +136,39 @@ def _decrypt_payload(
 
     entry = private_key_ring.get_by_id(message.recipient_key_id)
     if entry is None:
-        raise ValueError("Entry not found")
+        raise ValueError("Korisnik više ne postoji (ulaz nije pronadjen)!")
 
     password = get_password(entry)
-    private_key = _unlock_private_key(entry, password)
-    session_key = rsa.decrypt(private_key, message.encrypted_session_key)
-    return decrypt(message.symmetric_algorithm, payload, session_key, message.iv)
+    try:
+        private_key = _unlock_private_key(entry, password)
+        session_key = rsa.decrypt(private_key, message.encrypted_session_key)
+        return decrypt(message.symmetric_algorithm, payload, session_key, message.iv)
+    except (ValueError, TypeError, UnicodeDecodeError) as e:
+        raise ValueError("Pogrešna lozinka ili oštećen privatni ključ.") from e
 
 
 def _unlock_private_key(entry: PrivateKeyEntry, password: str) -> str:
+    """
+    Unlocks the private key using the provided password.
+    :param entry:
+    :param password:
+    :return:
+    """
 
     symetric_key = hash_function(password.encode("utf-8"))[:16]
-    pem = decrypt(SymmetricAlgorithm.AES128.value, entry.encrypted_private_key, symetric_key, entry.iv)
-    return pem.decode("utf-8")
+    try:
+        pem = decrypt(SymmetricAlgorithm.AES128.value, entry.encrypted_private_key, symetric_key, entry.iv)
+        return pem.decode("utf-8")
+    except (ValueError, TypeError, UnicodeDecodeError) as e:
+        raise ValueError("Pogrešna lozinka za privatni ključ.") from e
 
 
 def _decompress_payload(payload: bytes) -> bytes:
+    """
+    Decompresses the payload of the PGP message if confidentiality is enabled.
+    :param payload:
+    :return:
+    """
     return decompress(payload)
 
 def _verify_signature(
@@ -124,6 +176,13 @@ def _verify_signature(
     message_component: MessageComponent,
     public_ring: PublicKeyRing,
 ) -> tuple[bool | None, str | None]:
+    """
+    Verifies the signature of the message component.
+    :param signature:
+    :param message_component:
+    :param public_ring:
+    :return:
+    """
 
     entry = public_ring.get_by_id(signature.sender_key_id)
     if entry is None:
