@@ -94,6 +94,7 @@ class PGPMessage:
     Binary format of to_bytes():
         [1 B]      flags (bit0 confidentiality, bit1 authentication, bit2 compression)
         if confidentiality:
+            [8 B]      recipient_key_id      (recipient's Key ID)
             [1 B + N]  symmetric_algorithm   (length-prefixed UTF-8 string)
             [2 B + M]  encrypted_session_key (length-prefixed RSA ciphertext)
             [1 B + K]  iv                    (length-prefixed)
@@ -104,6 +105,7 @@ class PGPMessage:
     compression: bool = False
     symmetric_algorithm: str | None = None
     encrypted_session_key: bytes | None = None
+    recipient_key_id: str | None = None
     iv: bytes | None = None
     payload: bytes = b""
 
@@ -124,6 +126,7 @@ class PGPMessage:
                     or self.iv is None):
                 raise ValueError("confidentiality requires symmetric_algorithm, "
                                  "encrypted_session_key and iv")
+            out += key_id_to_bytes(self.recipient_key_id)
             out += _pack_with_length(self.symmetric_algorithm.encode("utf-8"), length_size=1)
             out += _pack_with_length(self.encrypted_session_key, length_size=2)
             out += _pack_with_length(self.iv, length_size=1)
@@ -147,8 +150,11 @@ class PGPMessage:
         symmetric_algorithm = None
         encrypted_session_key = None
         iv = None
+        recipient_key_id = None
 
         if confidentiality:
+            recipient_key_id = data[offset:offset + 8].decode("utf-8")
+            offset += 8
             alg_bytes, offset = _unpack_with_length(data, offset, length_size=1)
             symmetric_algorithm = alg_bytes.decode("utf-8")
             encrypted_session_key, offset = _unpack_with_length(data, offset, length_size=2)
@@ -162,6 +168,7 @@ class PGPMessage:
             compression=compression,
             symmetric_algorithm=symmetric_algorithm,
             encrypted_session_key=encrypted_session_key,
+            recipient_key_id=recipient_key_id,
             iv=iv,
             payload=payload,
         )
