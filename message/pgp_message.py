@@ -153,7 +153,7 @@ class PGPMessage:
         recipient_key_id = None
 
         if confidentiality:
-            recipient_key_id = data[offset:offset + 8].decode("utf-8")
+            recipient_key_id = key_id_from_bytes(data[offset:offset + 8])
             offset += 8
             alg_bytes, offset = _unpack_with_length(data, offset, length_size=1)
             symmetric_algorithm = alg_bytes.decode("utf-8")

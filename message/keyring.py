@@ -1,7 +1,7 @@
 """
 Module: keyring.py
 Description: Public and private key rings with JSON persistence, indexed by key_id.
-             Private keys are stored already encrypted (see crypto/rsa_ops.py).
+             Private keys are stored already encrypted (see crypto/rsa.py).
 """
 
 import base64

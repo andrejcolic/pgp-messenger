@@ -27,7 +27,7 @@ def test():
             Date: 17/06/2026.
             """
     hashed_data = hash_function(data)
-    print(f"DATA: {data.decode(errors="ignore")}")
+    print(f"DATA: {data.decode(errors='ignore')}")
     print(f"HASHED DATA: {hashed_data.hex()}")
 
 

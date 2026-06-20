@@ -9,6 +9,7 @@ Date: 19/06/2026.
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from crypto import rsa
 from crypto.hashing import hash_function
 from message.keyring import PublicKeyRing, PrivateKeyRing, PrivateKeyEntry
 from crypto.radix64 import convert_from_radix64
@@ -103,8 +104,7 @@ def _decrypt_payload(
 
     password = get_password(entry)
     private_key = _unlock_private_key(entry, password, message.symmetric_algorithm)
-    session_key = ""
-    # session_key = rsa -> decrypt session key
+    session_key = rsa.decrypt(private_key, message.encrypted_session_key)
     return decrypt(message.symmetric_algorithm, payload, session_key, message.iv)
 
 
@@ -132,7 +132,6 @@ def _verify_signature(
     if digest[:2] != signature.leading_two_octets:
         return False, entry.user_id
 
-    is_valid = True
-    # is_valid = rsa -> verify signiture
+    is_valid = rsa.verify(entry.public_key_pem, signature.encrypted_digest, message_component.to_bytes())
 
     return is_valid, entry.user_id
