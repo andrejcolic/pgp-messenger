@@ -9,6 +9,7 @@ Date: 19/06/2026.
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from config import SymmetricAlgorithm
 from crypto import rsa
 from crypto.hashing import hash_function
 from message.keyring import PublicKeyRing, PrivateKeyRing, PrivateKeyEntry
@@ -103,15 +104,15 @@ def _decrypt_payload(
         raise ValueError("Entry not found")
 
     password = get_password(entry)
-    private_key = _unlock_private_key(entry, password, message.symmetric_algorithm)
+    private_key = _unlock_private_key(entry, password)
     session_key = rsa.decrypt(private_key, message.encrypted_session_key)
     return decrypt(message.symmetric_algorithm, payload, session_key, message.iv)
 
 
-def _unlock_private_key(entry: PrivateKeyEntry, password: str, algorithm: str) -> str:
+def _unlock_private_key(entry: PrivateKeyEntry, password: str) -> str:
 
-    symetric_key = hash_function(password)[:16]
-    pem = decrypt(algorithm, entry.encrypted_private_key, symetric_key, entry.iv)
+    symetric_key = hash_function(password.encode("utf-8"))[:16]
+    pem = decrypt(SymmetricAlgorithm.AES128.value, entry.encrypted_private_key, symetric_key, entry.iv)
     return pem.decode("utf-8")
 
 

@@ -71,6 +71,22 @@ def protect_private_key(private_pem, password):
     return encrypted, iv
 
 
+def unlock_private_key(encrypted_private_key, iv, password):
+    key = hash_function(password.encode("utf-8"))[:16]
+    pem = symmetric_algorithms.decrypt(
+        SymmetricAlgorithm.AES128.value, encrypted_private_key, key, iv
+    )
+    return pem.decode("utf-8")
+
+
+def public_pem_from_private(private_pem):
+    private_key = serialization.load_pem_private_key(private_pem.encode("utf-8"), password=None)
+    return private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+
+
 def export_pem(pem, path):
     with open(path, "w", encoding="utf-8") as f:
         f.write(pem)
