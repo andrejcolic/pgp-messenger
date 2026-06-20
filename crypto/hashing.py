@@ -4,10 +4,11 @@ Description: This module provides implementation of SHA-1.
 Author: Igor
 Date: 17/06/2026.
 """
+import hashlib
 
 from cryptography.hazmat.primitives import hashes
 
-def hash_function(data: bytes) -> bytes:
+def hash_function(data: bytes | str) -> bytes:
     """
     :param data: block_size 8 bytes
     :return:
@@ -30,4 +31,5 @@ def test():
     print(f"HASHED DATA: {hashed_data.hex()}")
 
 
-test()
+if __name__ == "__main__":
+    test()

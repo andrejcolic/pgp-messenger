@@ -46,5 +46,5 @@ def test():
     print("COMPRESSED DATA:", compressed_data.hex())
     print("DECOMPRESSED DATA:", decompressed_data.decode(errors="ignore"))
 
-
-test()
+if __name__ == "__main__":
+    test()
